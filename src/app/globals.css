@@ -1,42 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  --background: #0f1923;
+  --foreground: #ece8e1;
+  --line-color: #555;
+  --line-width: 2px;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+/* --- BRACKET LINES SYSTEM --- */
+
+/* The column holding the rounds */
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-width: 240px;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* A container that holds 2 matches (or 1) feeding into the next round */
+.match-pair {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  /* Adjust spacing based on round depth via inline styles or specific classes if needed */
+  margin: 1rem 0; 
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* The actual match card */
+.match-card {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #1c2733;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  z-index: 10;
+  width: 100%;
+}
+
+/* --- CONNECTORS (The "Elbows") --- */
+
+/* Connects a match to the right */
+.match-card::after {
+  content: '';
+  position: absolute;
+  right: -1rem; /* Length of the horizontal stub */
+  top: 50%;
+  width: 1rem;
+  height: var(--line-width);
+  background: var(--line-color);
+}
+
+/* Connects a PAIR of matches to the next round (Vertical Line + Horizontal connector) */
+.match-pair::after {
+  content: '';
+  position: absolute;
+  right: -2rem; /* Reach the next column */
+  top: 25%; /* Start from middle of top match */
+  bottom: 25%; /* End at middle of bottom match */
+  width: 1rem;
+  border-right: var(--line-width) solid var(--line-color);
+  border-top: var(--line-width) solid var(--line-color);
+  border-bottom: var(--line-width) solid var(--line-color);
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* Remove connectors for the Final rounds since they don't feed into pairs */
+.no-connector::after {
+  display: none;
 }
