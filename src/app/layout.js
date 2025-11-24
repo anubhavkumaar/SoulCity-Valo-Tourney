@@ -33,8 +33,8 @@ export default function RootLayout({ children }) {
                   <Link href="/bracket" className="hover:text-[#ff4655] transition">Bracket</Link>
                   <Link href="/teams" className="hover:text-[#ff4655] transition">Teams</Link>
                   <Link href="/streams" className="hover:text-[#ff4655] transition">Streams</Link>
-                  <Link href="/register" className="text-[#ff4655] hover:text-white transition border border-[#ff4655] px-3 py-1 rounded hover:bg-[#ff4655]">Register</Link>
                   <Link href="/admin" className="text-gray-500 hover:text-white transition flex items-center">Admin</Link>
+                  <Link href="/register" className="text-[#ff4655] hover:text-white transition border border-[#ff4655] px-3 py-1 rounded hover:bg-[#ff4655]">Register</Link>
                 </div>
               </div>
             </nav>

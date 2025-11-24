@@ -32,7 +32,7 @@ export default function AdminPage() {
 
   // UI State
   const [activeTab, setActiveTab] = useState('registrations');
-  const [togglingConfig, setTogglingConfig] = useState(null); // Track which config is updating
+  const [togglingConfig, setTogglingConfig] = useState(null); 
 
   // Team Form State
   const [editingId, setEditingId] = useState(null);
@@ -46,6 +46,9 @@ export default function AdminPage() {
 
   // Registration Filter State
   const [tierFilter, setTierFilter] = useState('All');
+
+  // Bracket Filter State
+  const [bracketRoundFilter, setBracketRoundFilter] = useState('All');
 
   // --- AUTHENTICATION ---
   const handleLogin = async (e) => {
@@ -266,6 +269,23 @@ export default function AdminPage() {
     await updateSiteConfig({ [key]: !siteConfig[key] });
     setTogglingConfig(null);
   };
+
+  // --- BRACKET UI LOGIC (Group by Round) ---
+  const roundOrder = [
+    'WB R1', 'WB QF', 'WB Semi', 'WB Final',
+    'LB R1', 'LB R2', 'LB R3', 'LB R4', 'LB Semi', 'LB Final',
+    'Grand Final'
+  ];
+
+  const matchesByRound = useMemo(() => {
+    if (!matches) return {};
+    const grouped = {};
+    matches.forEach(m => {
+        if (!grouped[m.name]) grouped[m.name] = [];
+        grouped[m.name].push(m);
+    });
+    return grouped;
+  }, [matches]);
 
   if (authLoading) return <div className="h-screen flex items-center justify-center text-white">Loading...</div>;
 
@@ -525,97 +545,110 @@ export default function AdminPage() {
             <h2 className="text-2xl font-black uppercase">
               <span className="text-[#ff4655]">03 //</span> Bracket Management
             </h2>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
+               <div className="text-xs text-gray-400 font-bold uppercase">View:</div>
+               <select 
+                 className="bg-black border border-white/20 text-white text-xs p-1 rounded outline-none focus:border-[#ff4655]"
+                 value={bracketRoundFilter}
+                 onChange={(e) => setBracketRoundFilter(e.target.value)}
+               >
+                 <option value="All">All Rounds</option>
+                 {roundOrder.map(r => <option key={r} value={r}>{r}</option>)}
+               </select>
+               <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
                <button onClick={handleAutoSeed} className="text-xs text-[#ff4655] border border-[#ff4655] px-3 py-1 rounded hover:bg-[#ff4655] hover:text-white uppercase transition">
-                  Auto-Seed Bracket
+                  Auto-Seed
                </button>
                <button onClick={handleResetBracket} className="text-xs text-red-500 border border-red-500 px-3 py-1 rounded hover:bg-red-500 hover:text-white uppercase transition">
-                  Reset Bracket Data
+                  Reset
                </button>
             </div>
           </div>
 
           {matches.length === 0 && <p className="text-red-500 text-sm">Bracket Empty. Click Reset Bracket above.</p>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto custom-scrollbar p-2">
-            {matches.sort((a,b) => parseInt(a.id.replace('M','')) - parseInt(b.id.replace('M',''))).map((match) => (
-              <div key={match.id} className="bg-black/40 border border-white/10 p-4 rounded">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs font-mono text-gray-500">{match.id}</span>
-                  <span className="text-xs font-bold uppercase text-[#ff4655]">
-                     {match.name}
-                  </span>
-                </div>
+          <div className="max-h-[800px] overflow-y-auto custom-scrollbar pr-2">
+            {roundOrder.map(roundName => {
+                // Filter logic
+                if (bracketRoundFilter !== 'All' && bracketRoundFilter !== roundName) return null;
 
-                <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                  <div className="flex flex-col gap-1">
-                     <div className="flex gap-1">
-                       <select 
-                         className="bg-black border border-white/20 text-white text-xs p-1 rounded w-24"
-                         value={match.team1 || ""}
-                         onChange={(e) => updateMatch(match.id, { team1: e.target.value || null })}
-                       >
-                         <option value="">{match.source1 || "Select Team"}</option>
-                         {teams.map(t => (
-                           <option key={t.id} value={t.name}>{t.name}</option>
-                         ))}
-                       </select>
-                     </div>
-                     
-                     {match.team1 && (
-                       <button 
-                         onClick={() => updateMatch(match.id, { winner: match.team1 })}
-                         className={`text-[10px] px-2 py-1 rounded transition ${match.winner === match.team1 ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-green-600'}`}
-                       >
-                         Winner
-                       </button>
-                     )}
-                  </div>
+                const roundMatches = matchesByRound[roundName] || [];
+                if (roundMatches.length === 0) return null;
 
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="flex gap-1">
-                      <input 
-                        type="number" 
-                        className="w-10 bg-black border border-white/20 text-center text-white"
-                        value={match.score1}
-                        onChange={(e) => updateMatch(match.id, { score1: parseInt(e.target.value) || 0 })}
-                      />
-                      <span className="text-gray-500">-</span>
-                      <input 
-                        type="number" 
-                        className="w-10 bg-black border border-white/20 text-center text-white"
-                        value={match.score2}
-                        onChange={(e) => updateMatch(match.id, { score2: parseInt(e.target.value) || 0 })}
-                      />
+                // Sort matches by ID within the round
+                roundMatches.sort((a,b) => parseInt(a.id.replace('M','')) - parseInt(b.id.replace('M','')));
+
+                return (
+                    <div key={roundName} className="mb-8 animate-fade-in-up">
+                        <h3 className="text-lg font-bold text-gray-400 border-b border-white/10 pb-2 mb-4 uppercase tracking-widest pl-2 border-l-4 border-[#ff4655]">{roundName}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {roundMatches.map((match) => (
+                                <div key={match.id} className={`p-4 rounded border transition hover:border-white/30 ${match.winner ? 'bg-green-900/10 border-green-500/30' : 'bg-black/40 border-white/10'}`}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="text-xs font-mono text-gray-500">{match.id}</span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {/* Team 1 */}
+                                        <div className="flex items-center gap-2">
+                                            <select 
+                                                className={`flex-1 bg-black border text-white text-xs p-2 rounded ${match.winner === match.team1 && match.team1 ? 'border-green-500 text-green-400 font-bold' : 'border-white/20'}`}
+                                                value={match.team1 || ""}
+                                                onChange={(e) => updateMatch(match.id, { team1: e.target.value || null })}
+                                            >
+                                                <option value="">{match.source1 || "Select Team"}</option>
+                                                {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                            </select>
+                                            <input 
+                                                type="number" 
+                                                className="w-12 bg-black border border-white/20 text-center text-white text-sm rounded p-1"
+                                                value={match.score1}
+                                                onChange={(e) => updateMatch(match.id, { score1: parseInt(e.target.value) || 0 })}
+                                            />
+                                            {match.team1 && (
+                                                <button 
+                                                    onClick={() => updateMatch(match.id, { winner: match.team1 })}
+                                                    className={`w-8 h-8 flex items-center justify-center rounded text-sm font-bold transition-all ${match.winner === match.team1 ? 'bg-green-600 text-white scale-110 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'bg-white/5 text-gray-500 hover:bg-green-600 hover:text-white hover:scale-105'}`}
+                                                    title="Set as Winner"
+                                                >
+                                                    ✓
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Team 2 */}
+                                        <div className="flex items-center gap-2">
+                                            <select 
+                                                className={`flex-1 bg-black border text-white text-xs p-2 rounded ${match.winner === match.team2 && match.team2 ? 'border-green-500 text-green-400 font-bold' : 'border-white/20'}`}
+                                                value={match.team2 || ""}
+                                                onChange={(e) => updateMatch(match.id, { team2: e.target.value || null })}
+                                            >
+                                                <option value="">{match.source2 || "Select Team"}</option>
+                                                {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                            </select>
+                                            <input 
+                                                type="number" 
+                                                className="w-12 bg-black border border-white/20 text-center text-white text-sm rounded p-1"
+                                                value={match.score2}
+                                                onChange={(e) => updateMatch(match.id, { score2: parseInt(e.target.value) || 0 })}
+                                            />
+                                            {match.team2 && (
+                                                <button 
+                                                    onClick={() => updateMatch(match.id, { winner: match.team2 })}
+                                                    className={`w-8 h-8 flex items-center justify-center rounded text-sm font-bold transition-all ${match.winner === match.team2 ? 'bg-green-600 text-white scale-110 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'bg-white/5 text-gray-500 hover:bg-green-600 hover:text-white hover:scale-105'}`}
+                                                    title="Set as Winner"
+                                                >
+                                                    ✓
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                  </div>
-
-                   <div className="flex flex-col gap-1 text-right items-end">
-                     <div className="flex gap-1 justify-end">
-                       <select 
-                         className="bg-black border border-white/20 text-white text-xs p-1 rounded w-24"
-                         value={match.team2 || ""}
-                         onChange={(e) => updateMatch(match.id, { team2: e.target.value || null })}
-                       >
-                         <option value="">{match.source2 || "Select Team"}</option>
-                         {teams.map(t => (
-                           <option key={t.id} value={t.name}>{t.name}</option>
-                         ))}
-                       </select>
-                     </div>
-
-                     {match.team2 && (
-                       <button 
-                         onClick={() => updateMatch(match.id, { winner: match.team2 })}
-                         className={`text-[10px] px-2 py-1 rounded transition ${match.winner === match.team2 ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-green-600'}`}
-                       >
-                         Winner
-                       </button>
-                     )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                )
+            })}
           </div>
         </div>
       )}
