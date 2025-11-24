@@ -1,12 +1,17 @@
+"use client";
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTournament } from "@/context/TournamentContext";
 
 export default function Home() {
+  const { siteConfig } = useTournament();
+
+  if (!siteConfig.showHome) return <div className="flex items-center justify-center h-screen text-white">Access Denied or Page Under Maintenance</div>;
+
   return (
     <div className="relative h-[calc(100vh-64px)] flex items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        {/* FIXED: Path removed '/public', changed extension to .png */}
         <Image 
           src="/images/hero-banner.png" 
           alt="Background" 
@@ -20,8 +25,13 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 text-center max-w-4xl px-4 flex flex-col items-center">
         <div className="mb-8 w-full max-w-lg drop-shadow-[0_0_25px_rgba(255,70,85,0.3)]">
-           {/* FIXED: Path updated to /images/logo.png */}
-           <Image src="/images/logo.png" alt="SoulCity Logo" width={600} height={200} className="w-full h-auto" />
+           <Image 
+             src="/images/logo.png"      
+             alt="SoulCity Logo" 
+             width={600} 
+             height={200} 
+             className="w-full h-auto" 
+           />
         </div>
         
         <h2 className="text-[#ff4655] font-bold tracking-[0.3em] uppercase mb-2">Tournament Live</h2>
@@ -33,12 +43,16 @@ export default function Home() {
         </p>
 
         <div className="flex gap-4">
-          <Link href="/bracket" className="bg-[#ff4655] hover:bg-[#d93542] text-white font-bold py-3 px-8 uppercase tracking-widest clip-path-polygon transition">
-            View Bracket
-          </Link>
-          <Link href="/streams" className="border border-white text-white hover:bg-white hover:text-black font-bold py-3 px-8 uppercase tracking-widest transition">
-            Watch Live
-          </Link>
+          {siteConfig.showBracket && (
+            <Link href="/bracket" className="bg-[#ff4655] hover:bg-[#d93542] text-white font-bold py-3 px-8 uppercase tracking-widest transition clip-path-polygon">
+                View Bracket
+            </Link>
+          )}
+          {siteConfig.showStreams && (
+            <Link href="/streams" className="border border-white text-white hover:bg-white hover:text-black font-bold py-3 px-8 uppercase tracking-widest transition">
+                Watch Live
+            </Link>
+          )}
         </div>
       </div>
     </div>
