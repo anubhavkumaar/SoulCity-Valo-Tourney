@@ -9,7 +9,7 @@ export default function StreamsPage() {
   const [liveStreams, setLiveStreams] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Ensure the hashtag always has the '#' prefix for the API search query
+  // 1. Prepare the hashtag
   const hashtag = streamSettings.hashtag || "lifeinsoulcity";
   const formattedHashtag = hashtag.startsWith('#') ? hashtag : `#${hashtag}`;
 
@@ -18,16 +18,14 @@ export default function StreamsPage() {
 
     setLoading(true);
     try {
-      // STEP 1: Search for live videos with the hashtag
+      // STEP 1: Search for live videos (returns truncated data)
       const searchRes = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=id&type=video&eventType=live&q=${encodeURIComponent(formattedHashtag)}&key=${YOUTUBE_API_KEY}&maxResults=15`
       );
       const searchData = await searchRes.json();
       
       if (searchData.items && searchData.items.length > 0) {
-        // STEP 2: Fetch full details for these videos (to get full description and tags)
-        // The search endpoint returns truncated descriptions, which causes valid streams to be filtered out incorrectly.
-        // The videos endpoint gives us the complete data for accurate filtering.
+        // STEP 2: Get FULL details using video IDs (to check full description/tags)
         const videoIds = searchData.items.map(item => item.id.videoId).join(',');
         
         const detailsRes = await fetch(
@@ -38,20 +36,19 @@ export default function StreamsPage() {
         if (detailsData.items) {
             const searchTag = formattedHashtag.toLowerCase();
 
-            // STEP 3: Strict Client-Side Filter on FULL data
+            // STEP 3: Strict Filter - Check Title, Full Description, OR Tags
             const validStreams = detailsData.items.filter(video => {
                 const title = (video.snippet.title || "").toLowerCase();
                 const desc = (video.snippet.description || "").toLowerCase();
                 const tags = (video.snippet.tags || []).map(t => t.toLowerCase());
 
-                // Check if the hashtag exists in Title OR Full Description OR Tags
                 return title.includes(searchTag) || 
                        desc.includes(searchTag) || 
                        tags.includes(searchTag);
             });
 
             setLiveStreams(validStreams.map(item => ({
-                id: item.id, // Note: 'videos' endpoint returns id as a string, not an object
+                id: item.id, 
                 title: item.snippet.title,
                 thumbnail: item.snippet.thumbnails.medium.url,
                 channel: item.snippet.channelTitle
@@ -71,11 +68,10 @@ export default function StreamsPage() {
 
   useEffect(() => {
     fetchLiveStreams();
-    const interval = setInterval(fetchLiveStreams, 60000); // Refresh every minute
+    const interval = setInterval(fetchLiveStreams, 60000); 
     return () => clearInterval(interval);
   }, [formattedHashtag]);
 
-  // Helper to render an embedded player
   const StreamPlayer = ({ videoId, title, label }) => (
     <div className="w-full h-full flex flex-col">
       <div className="relative w-full pt-[56.25%] bg-black border border-[#ff4655]">
@@ -105,9 +101,7 @@ export default function StreamsPage() {
           </span>
         </div>
 
-        {/* --- PINNED STREAMS SECTION --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          {/* Main Broadcast */}
           <div className="lg:col-span-2 aspect-video">
             {streamSettings.main ? (
               <StreamPlayer videoId={streamSettings.main.id} title={streamSettings.main.title} label="Official Tournament Stream" />
@@ -118,7 +112,6 @@ export default function StreamsPage() {
             )}
           </div>
 
-          {/* POV Streams */}
           <div className="flex flex-col gap-6">
             <div className="flex-1">
               {streamSettings.pov1 ? (
@@ -141,7 +134,6 @@ export default function StreamsPage() {
           </div>
         </div>
 
-        {/* --- ALL STREAMS GRID --- */}
         <h2 className="text-xl font-bold uppercase text-white mb-4 flex items-center gap-2">
           All Streams <span className="text-[#ff4655] text-sm">{formattedHashtag}</span>
         </h2>
