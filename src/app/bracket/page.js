@@ -3,13 +3,14 @@ import { useTournament } from "@/context/TournamentContext";
 
 // Component for a Single Match Card
 const MatchCard = ({ match, noConnector = false }) => {
+  if (!match) return null;
+
   // If no team is set, show the source placeholder (e.g. "Winner M1")
-  const t1 = match.team1 || match.source1;
-  const t2 = match.team2 || match.source2;
+  const t1 = match.team1 || match.source1 || 'TBD';
+  const t2 = match.team2 || match.source2 || 'TBD';
   
-  // Check if it's a placeholder string to style it differently
-  const isPlaceholder1 = t1?.includes('Winner') || t1?.includes('Loser') || t1?.includes('Team');
-  const isPlaceholder2 = t2?.includes('Winner') || t2?.includes('Loser') || t2?.includes('Team');
+  const isPlaceholder1 = t1?.includes('Winner') || t1?.includes('Loser') || t1?.includes('Team') || t1 === 'TBD';
+  const isPlaceholder2 = t2?.includes('Winner') || t2?.includes('Loser') || t2?.includes('Team') || t2 === 'TBD';
 
   return (
     <div className={`match-card ${noConnector ? 'no-connector' : ''}`}>
@@ -37,14 +38,7 @@ const MatchCard = ({ match, noConnector = false }) => {
 };
 
 // Component to Group 2 matches (or 1) to create the Elbow connector
-const BracketPair = ({ topMatch, botMatch, single = false }) => {
-  if (single) {
-    return (
-      <div className="match-pair no-connector">
-         {topMatch && <MatchCard match={topMatch} />}
-      </div>
-    );
-  }
+const BracketPair = ({ topMatch, botMatch }) => {
   return (
     <div className="match-pair">
       {topMatch && <MatchCard match={topMatch} />}
@@ -57,6 +51,8 @@ export default function BracketPage() {
   const { matches } = useTournament();
 
   const getM = (id) => matches.find(m => m.id === id);
+
+  if (!matches || matches.length === 0) return <div className="text-white p-10 text-center">Loading Bracket or No Data Initialized...</div>;
 
   return (
     <div className="min-h-screen bg-[#0f1923] p-8 overflow-x-auto custom-scrollbar">
