@@ -4,6 +4,7 @@ import { createContext, useContext, useState } from 'react';
 const TournamentContext = createContext();
 
 export const TournamentProvider = ({ children }) => {
+  // --- TEAM STATE ---
   const [teams, setTeams] = useState(
     Array.from({ length: 16 }, (_, i) => ({ 
       id: `team-${i+1}`, 
@@ -12,6 +13,19 @@ export const TournamentProvider = ({ children }) => {
     }))
   );
 
+  // --- STREAM STATE ---
+  const [streamSettings, setStreamSettings] = useState({
+    hashtag: 'lifeinsoulcity',
+    main: null, // { id, title, thumbnail }
+    pov1: null,
+    pov2: null
+  });
+
+  const updateStreamSettings = (newSettings) => {
+    setStreamSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
+  // --- BRACKET STATE ---
   // Helper to create match objects
   const createMatch = (id, name, nextWin, nextLose, src1, src2) => ({
     id, name, nextWin, nextLose, 
@@ -83,7 +97,6 @@ export const TournamentProvider = ({ children }) => {
           const nextM = newMatches.find(m => m.id === current.nextWin);
           if (nextM) {
              const slot = !nextM.team1 || nextM.team1.includes('Winner') || nextM.team1.includes('Loser') ? 'team1' : 'team2';
-             // Only update if not already set to this winner
              if (nextM[slot] !== updates.winner) {
                 const idx = newMatches.findIndex(m => m.id === current.nextWin);
                 newMatches[idx] = { ...newMatches[idx], [slot]: updates.winner };
@@ -113,13 +126,11 @@ export const TournamentProvider = ({ children }) => {
   };
 
   const removeTeam = (id) => {
-    // 1. Get the team name before deleting
     const teamToRemove = teams.find(t => t.id === id);
     const nameToRemove = teamToRemove ? teamToRemove.name : null;
 
     setTeams(prev => prev.filter(t => t.id !== id));
 
-    // 2. Clear this team from the bracket if they exist there
     if (nameToRemove) {
       setMatches(prev => prev.map(m => {
         let update = { ...m };
@@ -132,33 +143,35 @@ export const TournamentProvider = ({ children }) => {
   };
 
   const editTeam = (id, newName, newRoster) => {
-    // 1. Get the Old Name
     const teamToEdit = teams.find(t => t.id === id);
     const oldName = teamToEdit ? teamToEdit.name : null;
 
-    // 2. Update Team List
     setTeams(prev => prev.map(t => t.id === id ? { ...t, name: newName, roster: newRoster } : t));
 
-    // 3. Update Name in Matches (Propagation)
     if (oldName && oldName !== newName) {
       setMatches(prev => prev.map(m => {
         let update = { ...m };
-        // Replace in Slots
         if (update.team1 === oldName) update.team1 = newName;
         if (update.team2 === oldName) update.team2 = newName;
-        // Replace in Winner (if already won)
         if (update.winner === oldName) update.winner = newName;
-        // Replace in Source (if it was a seeded source)
         if (update.source1 === oldName) update.source1 = newName;
         if (update.source2 === oldName) update.source2 = newName;
-        
         return update;
       }));
     }
   };
 
   return (
-    <TournamentContext.Provider value={{ teams, matches, updateMatch, addTeam, removeTeam, editTeam }}>
+    <TournamentContext.Provider value={{ 
+      teams, 
+      matches, 
+      updateMatch, 
+      addTeam, 
+      removeTeam, 
+      editTeam,
+      streamSettings,
+      updateStreamSettings
+    }}>
       {children}
     </TournamentContext.Provider>
   );

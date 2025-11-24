@@ -3,26 +3,64 @@ import { useState, useEffect } from 'react';
 import { useTournament } from "@/context/TournamentContext";
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-const HASHTAG = "#lifeinsoulcity";
 
 export default function StreamsPage() {
   const { streamSettings } = useTournament();
   const [liveStreams, setLiveStreams] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Ensure the hashtag always has the '#' prefix for the API search query
+  const hashtag = streamSettings.hashtag || "lifeinsoulcity";
+  const formattedHashtag = hashtag.startsWith('#') ? hashtag : `#${hashtag}`;
+
   const fetchLiveStreams = async () => {
+    if (!YOUTUBE_API_KEY) return;
+
+    setLoading(true);
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&eventType=live&q=${encodeURIComponent(HASHTAG)}&key=${YOUTUBE_API_KEY}&maxResults=12`
+      // STEP 1: Search for live videos with the hashtag
+      const searchRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=id&type=video&eventType=live&q=${encodeURIComponent(formattedHashtag)}&key=${YOUTUBE_API_KEY}&maxResults=15`
       );
-      const data = await res.json();
-      if (data.items) {
-        setLiveStreams(data.items.map(item => ({
-          id: item.id.videoId,
-          title: item.snippet.title,
-          thumbnail: item.snippet.thumbnails.medium.url,
-          channel: item.snippet.channelTitle
-        })));
+      const searchData = await searchRes.json();
+      
+      if (searchData.items && searchData.items.length > 0) {
+        // STEP 2: Fetch full details for these videos (to get full description and tags)
+        // The search endpoint returns truncated descriptions, which causes valid streams to be filtered out incorrectly.
+        // The videos endpoint gives us the complete data for accurate filtering.
+        const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+        
+        const detailsRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        );
+        const detailsData = await detailsRes.json();
+
+        if (detailsData.items) {
+            const searchTag = formattedHashtag.toLowerCase();
+
+            // STEP 3: Strict Client-Side Filter on FULL data
+            const validStreams = detailsData.items.filter(video => {
+                const title = (video.snippet.title || "").toLowerCase();
+                const desc = (video.snippet.description || "").toLowerCase();
+                const tags = (video.snippet.tags || []).map(t => t.toLowerCase());
+
+                // Check if the hashtag exists in Title OR Full Description OR Tags
+                return title.includes(searchTag) || 
+                       desc.includes(searchTag) || 
+                       tags.includes(searchTag);
+            });
+
+            setLiveStreams(validStreams.map(item => ({
+                id: item.id, // Note: 'videos' endpoint returns id as a string, not an object
+                title: item.snippet.title,
+                thumbnail: item.snippet.thumbnails.medium.url,
+                channel: item.snippet.channelTitle
+            })));
+        } else {
+            setLiveStreams([]);
+        }
+      } else {
+        setLiveStreams([]);
       }
     } catch (error) {
       console.error("YouTube API Error:", error);
@@ -35,7 +73,7 @@ export default function StreamsPage() {
     fetchLiveStreams();
     const interval = setInterval(fetchLiveStreams, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, []);
+  }, [formattedHashtag]);
 
   // Helper to render an embedded player
   const StreamPlayer = ({ videoId, title, label }) => (
@@ -69,7 +107,7 @@ export default function StreamsPage() {
 
         {/* --- PINNED STREAMS SECTION --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          {/* Main Broadcast (Spans 2 cols on large screens) */}
+          {/* Main Broadcast */}
           <div className="lg:col-span-2 aspect-video">
             {streamSettings.main ? (
               <StreamPlayer videoId={streamSettings.main.id} title={streamSettings.main.title} label="Official Tournament Stream" />
@@ -105,7 +143,7 @@ export default function StreamsPage() {
 
         {/* --- ALL STREAMS GRID --- */}
         <h2 className="text-xl font-bold uppercase text-white mb-4 flex items-center gap-2">
-          All Streams <span className="text-[#ff4655] text-sm">#lifeinsoulcity</span>
+          All Streams <span className="text-[#ff4655] text-sm">{formattedHashtag}</span>
         </h2>
         
         {loading ? (
@@ -113,7 +151,7 @@ export default function StreamsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {liveStreams.length === 0 ? (
-               <p className="col-span-full text-gray-500 italic">No live streams found with tag {HASHTAG}</p>
+               <p className="col-span-full text-gray-500 italic">No live streams found matching {formattedHashtag}</p>
             ) : (
               liveStreams.map((vid) => (
                 <div key={vid.id} className="bg-[#1c2733] border border-white/10 hover:border-[#ff4655] transition group">
