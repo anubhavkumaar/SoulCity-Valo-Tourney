@@ -39,7 +39,7 @@ export default function Home() {
           Valorant Protocol
         </h1>
         <p className="text-xl text-gray-300 mb-10 font-medium">
-          16 Teams • Double Elimination • ₹50,000 Prize Pool
+          16 Teams • Double Elimination • ₹XX,XXX Prize Pool
         </p>
 
         <div className="flex gap-4">
