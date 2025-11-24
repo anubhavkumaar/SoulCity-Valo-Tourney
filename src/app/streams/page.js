@@ -5,11 +5,11 @@ import { useTournament } from "@/context/TournamentContext";
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
 
 export default function StreamsPage() {
-  const { streamSettings } = useTournament();
+  const { streamSettings, siteConfig, loading: contextLoading } = useTournament();
   const [liveStreams, setLiveStreams] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Prepare the hashtag
+  // Ensure the hashtag always has the '#' prefix for the API search query
   const hashtag = streamSettings.hashtag || "lifeinsoulcity";
   const formattedHashtag = hashtag.startsWith('#') ? hashtag : `#${hashtag}`;
 
@@ -18,14 +18,14 @@ export default function StreamsPage() {
 
     setLoading(true);
     try {
-      // STEP 1: Search for live videos (returns truncated data)
+      // STEP 1: Search for live videos with the hashtag
       const searchRes = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=id&type=video&eventType=live&q=${encodeURIComponent(formattedHashtag)}&key=${YOUTUBE_API_KEY}&maxResults=15`
       );
       const searchData = await searchRes.json();
       
       if (searchData.items && searchData.items.length > 0) {
-        // STEP 2: Get FULL details using video IDs (to check full description/tags)
+        // STEP 2: Fetch full details for these videos (to get full description and tags)
         const videoIds = searchData.items.map(item => item.id.videoId).join(',');
         
         const detailsRes = await fetch(
@@ -36,19 +36,20 @@ export default function StreamsPage() {
         if (detailsData.items) {
             const searchTag = formattedHashtag.toLowerCase();
 
-            // STEP 3: Strict Filter - Check Title, Full Description, OR Tags
+            // STEP 3: Strict Client-Side Filter on FULL data
             const validStreams = detailsData.items.filter(video => {
                 const title = (video.snippet.title || "").toLowerCase();
                 const desc = (video.snippet.description || "").toLowerCase();
                 const tags = (video.snippet.tags || []).map(t => t.toLowerCase());
 
+                // Check if the hashtag exists in Title OR Full Description OR Tags
                 return title.includes(searchTag) || 
                        desc.includes(searchTag) || 
                        tags.includes(searchTag);
             });
 
             setLiveStreams(validStreams.map(item => ({
-                id: item.id, 
+                id: item.id, // Note: 'videos' endpoint returns id as a string, not an object
                 title: item.snippet.title,
                 thumbnail: item.snippet.thumbnails.medium.url,
                 channel: item.snippet.channelTitle
@@ -68,10 +69,23 @@ export default function StreamsPage() {
 
   useEffect(() => {
     fetchLiveStreams();
-    const interval = setInterval(fetchLiveStreams, 60000); 
+    const interval = setInterval(fetchLiveStreams, 60000); // Refresh every minute
     return () => clearInterval(interval);
   }, [formattedHashtag]);
 
+  // Check page access
+  if (contextLoading) return <div className="h-screen flex items-center justify-center text-white">Loading...</div>;
+  
+  if (siteConfig && !siteConfig.showStreams) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0f1923] text-white text-center p-4">
+            <h1 className="text-4xl font-black uppercase text-[#ff4655] mb-4">Access Restricted</h1>
+            <p className="text-gray-400">Live Streams are currently hidden.</p>
+        </div>
+    );
+  }
+
+  // Helper to render an embedded player
   const StreamPlayer = ({ videoId, title, label }) => (
     <div className="w-full h-full flex flex-col">
       <div className="relative w-full pt-[56.25%] bg-black border border-[#ff4655]">
@@ -101,7 +115,9 @@ export default function StreamsPage() {
           </span>
         </div>
 
+        {/* --- PINNED STREAMS SECTION --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+          {/* Main Broadcast */}
           <div className="lg:col-span-2 aspect-video">
             {streamSettings.main ? (
               <StreamPlayer videoId={streamSettings.main.id} title={streamSettings.main.title} label="Official Tournament Stream" />
@@ -112,6 +128,7 @@ export default function StreamsPage() {
             )}
           </div>
 
+          {/* POV Streams */}
           <div className="flex flex-col gap-6">
             <div className="flex-1">
               {streamSettings.pov1 ? (
@@ -134,6 +151,7 @@ export default function StreamsPage() {
           </div>
         </div>
 
+        {/* --- ALL STREAMS GRID --- */}
         <h2 className="text-xl font-bold uppercase text-white mb-4 flex items-center gap-2">
           All Streams <span className="text-[#ff4655] text-sm">{formattedHashtag}</span>
         </h2>

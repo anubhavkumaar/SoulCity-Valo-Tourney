@@ -32,6 +32,7 @@ export default function AdminPage() {
 
   // UI State
   const [activeTab, setActiveTab] = useState('registrations');
+  const [togglingConfig, setTogglingConfig] = useState(null); // Track which config is updating
 
   // Team Form State
   const [editingId, setEditingId] = useState(null);
@@ -260,8 +261,10 @@ export default function AdminPage() {
   };
 
   // --- SITE CONFIG LOGIC ---
-  const toggleConfig = (key) => {
-    updateSiteConfig({ [key]: !siteConfig[key] });
+  const toggleConfig = async (key) => {
+    setTogglingConfig(key);
+    await updateSiteConfig({ [key]: !siteConfig[key] });
+    setTogglingConfig(null);
   };
 
   if (authLoading) return <div className="h-screen flex items-center justify-center text-white">Loading...</div>;
@@ -710,7 +713,8 @@ export default function AdminPage() {
                 <span className="text-sm font-bold uppercase text-white">{key.replace('show', '')} Page/Link</span>
                 <button 
                   onClick={() => toggleConfig(key)}
-                  className={`w-12 h-6 rounded-full relative transition-colors ${siteConfig[key] ? 'bg-green-500' : 'bg-red-500'}`}
+                  disabled={togglingConfig === key}
+                  className={`w-12 h-6 rounded-full relative transition-colors ${siteConfig[key] ? 'bg-green-500' : 'bg-red-500'} ${togglingConfig === key ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${siteConfig[key] ? 'left-7' : 'left-1'}`} />
                 </button>

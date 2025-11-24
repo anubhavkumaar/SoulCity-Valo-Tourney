@@ -48,7 +48,19 @@ const BracketPair = ({ topMatch, botMatch }) => {
 };
 
 export default function BracketPage() {
-  const { matches } = useTournament();
+  const { matches, siteConfig, loading } = useTournament();
+
+  if (loading) return <div className="h-screen flex items-center justify-center text-white">Loading...</div>;
+
+  // Check if page is enabled
+  if (siteConfig && !siteConfig.showBracket) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0f1923] text-white text-center p-4">
+            <h1 className="text-4xl font-black uppercase text-[#ff4655] mb-4">Access Restricted</h1>
+            <p className="text-gray-400">The Tournament Bracket is currently hidden.</p>
+        </div>
+    );
+  }
 
   const getM = (id) => matches.find(m => m.id === id);
 

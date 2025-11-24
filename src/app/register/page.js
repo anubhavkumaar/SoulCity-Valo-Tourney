@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTournament } from "@/context/TournamentContext";
 
 export default function RegisterPage() {
-  const { registerPlayer } = useTournament();
+  const { registerPlayer, siteConfig, loading } = useTournament();
   const [formData, setFormData] = useState({
     name: "",
     discordId: "",
@@ -14,6 +14,18 @@ export default function RegisterPage() {
   });
   const [status, setStatus] = useState("idle"); // idle, submitting, success, error
   const [errorMessage, setErrorMessage] = useState("");
+
+  if (loading) return <div className="h-screen flex items-center justify-center text-white">Loading...</div>;
+
+  // Check if page is enabled
+  if (siteConfig && !siteConfig.showRegister) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0f1923] text-white text-center p-4">
+            <h1 className="text-4xl font-black uppercase text-[#ff4655] mb-4">Registration Closed</h1>
+            <p className="text-gray-400">Player registration is currently unavailable.</p>
+        </div>
+    );
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;

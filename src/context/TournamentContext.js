@@ -17,7 +17,7 @@ export const TournamentProvider = ({ children }) => {
     pov1: null,
     pov2: null
   });
-  // NEW: Site Config State with defaults
+  // Site Config State with defaults
   const [siteConfig, setSiteConfig] = useState({
     showHome: true,
     showBracket: true,
@@ -51,16 +51,16 @@ export const TournamentProvider = ({ children }) => {
           main: null, 
           pov1: null, 
           pov2: null
-        }).catch(e => console.warn("Could not init stream settings (likely permission):", e));
+        }).catch(e => console.warn("Could not init stream settings:", e));
       }
     }, (error) => console.error("Stream settings listener error:", error));
 
     // NEW: Listener for Site Config
     const unsubSiteConfig = onSnapshot(doc(db, "settings", "siteConfig"), (doc) => {
       if (doc.exists()) {
-        setSiteConfig(doc.data());
+        // Ensure we merge with defaults to prevent missing keys if DB is incomplete
+        setSiteConfig(prev => ({ ...prev, ...doc.data() }));
       } else {
-        // Initialize with defaults if missing
         const defaults = {
             showHome: true,
             showBracket: true,
@@ -70,7 +70,7 @@ export const TournamentProvider = ({ children }) => {
             showAdmin: true
         };
         setSiteConfig(defaults);
-        setDoc(doc.ref, defaults).catch(e => console.warn("Could not init site config (likely permission):", e));
+        setDoc(doc.ref, defaults).catch(e => console.warn("Could not init site config:", e));
       }
     }, (error) => console.error("Site config listener error:", error));
 
@@ -91,20 +91,20 @@ export const TournamentProvider = ({ children }) => {
     };
   }, []);
 
-  // --- 2. ACTIONS (WRITE TO FIRESTORE) ---
+  // --- 2. ACTIONS ---
 
-  // SITE CONFIG ACTION
   const updateSiteConfig = async (newConfig) => {
     try {
       const docRef = doc(db, "settings", "siteConfig");
-      await updateDoc(docRef, newConfig);
+      // Use setDoc with merge: true to safely update partial fields
+      await setDoc(docRef, newConfig, { merge: true });
     } catch (error) {
       console.error("Error updating site config:", error);
       alert(`Action Failed: ${error.message}`);
     }
   };
 
-  // ... [Existing Registration Logic] ...
+  // ... (Rest of the actions remain identical) ...
   const registerPlayer = async (playerData) => {
     try {
       await addDoc(collection(db, "registrations"), {
@@ -151,7 +151,6 @@ export const TournamentProvider = ({ children }) => {
     }
   };
 
-  // ... [Existing Team Logic] ...
   const addTeam = async (name, roster) => {
     try {
       await addDoc(collection(db, "teams"), { name, roster });
@@ -215,7 +214,6 @@ export const TournamentProvider = ({ children }) => {
     }
   };
 
-  // ... [Existing Bracket Logic] ...
   const initializeBracket = async (initialData) => {
     try {
       for (const match of initialData) {
@@ -270,7 +268,6 @@ export const TournamentProvider = ({ children }) => {
     }
   };
 
-  // STREAMS
   const updateStreamSettings = async (newSettings) => {
     try {
       const docRef = doc(db, "settings", "streams");
@@ -286,8 +283,8 @@ export const TournamentProvider = ({ children }) => {
       teams, 
       matches, 
       registrations, 
-      siteConfig, // Exposed
-      updateSiteConfig, // Exposed
+      siteConfig, 
+      updateSiteConfig,
       updateMatch, 
       addTeam, 
       removeTeam, 
